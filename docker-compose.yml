@@ -1,0 +1,51 @@
+# docker-compose.yml
+# Orchestrates two services:
+#   - postgres : the data warehouse (schema auto-initialized on first boot)
+#   - etl      : the Python pipeline, runs once and exits (job-style container)
+#
+# Usage:
+#   docker-compose up --build
+#
+# The etl service waits for postgres to be healthy before running,
+# then extracts -> transforms -> loads data/raw/sales_export.csv
+# into the warehouse.fact_sales table (see sql/init_schema.sql).
+
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sales_dw_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sales_dw
+      POSTGRES_USER: etl_user
+      POSTGRES_PASSWORD: etl_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./sql/init_schema.sql:/docker-entrypoint-initdb.d/init_schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U etl_user -d sales_dw"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  etl:
+    build: .
+    container_name: sales_etl_job
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: sales_dw
+      PGUSER: etl_user
+      PGPASSWORD: etl_password
+    volumes:
+      - ./data:/app/data
+
+volumes:
+  pgdata:
