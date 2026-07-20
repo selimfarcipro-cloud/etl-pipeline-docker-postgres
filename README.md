@@ -185,24 +185,4 @@ And the resulting revenue breakdown once loaded into the fact table:
 
 ![Revenue by store](images/revenue_by_store.png)
 
-## Design choices & possible extensions
-
-- **Reject, don't silently fix**: ambiguous rows (e.g. a price mismatch) are
-  quarantined with a reason rather than auto-corrected, since guessing the
-  "right" value risks introducing incorrect data into the warehouse.
-- **Idempotent loads**: `ON CONFLICT DO NOTHING` on the fact and dimension
-  tables means re-running the pipeline on the same file will not create
-  duplicate warehouse rows.
-- **Staging kept separate from the warehouse**: even rejected rows are
-  preserved in `staging.sales_raw`, so no information from the source
-  system is ever lost, even if the business rules governing what counts as
-  "valid" change later and rows need to be re-evaluated.
-- **Next step — orchestration**: this pipeline currently runs as a single
-  on-demand container. The natural next step is to schedule and orchestrate
-  it — see the companion project
-  [`etl-orchestration-argo-demo`](https://github.com/SelimFarci/etl-orchestration-argo-demo),
-  which breaks this same pipeline into an Argo Workflows DAG with a daily
-  `CronWorkflow`.
-- See also [`data-quality-dashboard-r`](https://github.com/SelimFarci/data-quality-dashboard-r)
-  for a complementary R/Shiny angle on data quality monitoring, applied to a
-  different dataset.
+#
